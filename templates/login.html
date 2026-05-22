@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - App OTP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .nav-back {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .nav-back:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .card .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 0.95em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #FF9800;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #F57C00;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .step-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin: 0 5px;
+            transition: background 0.3s;
+        }
+
+        .step-dot.active {
+            background: #FF9800;
+        }
+
+        .step-dot.done {
+            background: #4CAF50;
+        }
+
+        .step-line {
+            width: 50px;
+            height: 2px;
+            background: #ddd;
+            align-self: center;
+            transition: background 0.3s;
+        }
+
+        .step-line.done {
+            background: #4CAF50;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .step-content {
+            display: none;
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        .console-output {
+            background: #1e1e1e;
+            color: #ce9178;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .console-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .mfa-fatigue-demo {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .mfa-fatigue-demo h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/" class="nav-back">← Quay lại Dashboard</a>
+
+        <div class="card">
+            <h2>📱 Đăng nhập với App OTP</h2>
+            <p class="subtitle">Xác thực 2 lớp qua Ứng dụng (Mô phỏng MFA Fatigue Attack)</p>
+
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot1">1</div>
+                <div class="step-line" id="line1"></div>
+                <div class="step-dot" id="dot2">2</div>
+                <div class="step-line" id="line2"></div>
+                <div class="step-dot" id="dot3">3</div>
+            </div>
+
+            <!-- Bước 1: Nhập email/password -->
+            <div class="step-content active" id="step1Content">
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="loginEmail" placeholder="demo@example.com" value="demo@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Mật khẩu:</label>
+                    <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" value="Demo@123">
+                </div>
+                <button class="btn" onclick="requestOTP()">Đăng nhập & Nhận OTP</button>
+            </div>
+
+            <!-- Bước 2: Nhập OTP từ App -->
+            <div class="step-content" id="step2Content">
+                <p style="color: #666; margin-bottom: 15px;">
+                    📱 Một thông báo đã được gửi đến App trên điện thoại của <strong id="loginEmailDisplay"></strong>
+                </p>
+                <div class="form-group">
+                    <label>Nhập mã OTP từ App:</label>
+                    <input type="text" id="appOtpInput" placeholder="Nhập OTP từ ứng dụng" maxlength="6">
+                </div>
+                <button class="btn" onclick="verifyAppOTP()">Xác minh & Đăng nhập</button>
+
+                <!-- MFA Fatigue Demo -->
+                <div class="mfa-fatigue-demo">
+                    <h4>⚠️ MFA Fatigue Attack Demo</h4>
+                    <p style="color: #856404; font-size: 0.9em;">
+                        Attacker liên tục gửi yêu cầu OTP, khiến victim bị "mệt mỏi" và vô tình chấp nhận.
+                    </p>
+                    <button class="btn" style="background: #dc3545; margin-top: 10px;" onclick="mfaFatigueAttack()">
+                        🔄 Gửi liên tục (Mô phỏng MFA Fatigue)
+                    </button>
+                    <div id="fatigueStatus" style="margin-top: 10px; font-weight: bold;"></div>
+                </div>
+            </div>
+
+            <!-- Bước 3: Thành công -->
+            <div class="step-content" id="step3Content">
+                <div style="text-align: center; padding: 30px;">
+                    <div style="font-size: 4em;">🔓</div>
+                    <h3 style="color: #4CAF50; margin: 15px 0;">Đăng nhập thành công!</h3>
+                    <p style="color: #666;">
+                        Đã đăng nhập với tài khoản <strong id="loggedInEmail"></strong>
+                    </p>
+                    <p style="color: #FF5722; margin-top: 15px;">
+                        ⚠️ Counter đã tăng lên: <strong id="newCounter"></strong>
+                    </p>
+                </div>
+            </div>
+
+            <div id="messageBox" class="message"></div>
+
+            <div class="console-label">📟 Console Output (giả lập App Push Notification):</div>
+            <div class="console-output" id="consoleOutput">
+                Đang chờ thao tác...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLoginEmail = '';
+        let fatigueInterval = null;
+        let fatigueCount = 0;
+
+        async function requestOTP() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showMessage('Vui lòng nhập đầy đủ thông tin!', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/login/request-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentLoginEmail = email;
+                    document.getElementById('loginEmailDisplay').textContent = email;
+
+                    // Chuyển sang bước 2
+                    document.getElementById('step1Content').classList.remove('active');
+                    document.getElementById('step2Content').classList.add('active');
+                    document.getElementById('dot1').classList.add('done');
+                    document.getElementById('dot2').classList.add('active');
+                    document.getElementById('line1').classList.add('done');
+
+                    document.getElementById('consoleOutput').textContent =
+                        `📱 GIẢ LẬP PUSH NOTIFICATION ĐẾN APP\n` +
+                        `User: ${email}\n` +
+                        `Counter: ${data.data.counter}\n` +
+                        `OTP: ${data.data.otp_debug}\n` +
+                        `────────────────────────────────\n` +
+                        `⚠️  MFA FATIGUE ANGLE:\n` +
+                        `Nếu attacker liên tục gửi yêu cầu,\n` +
+                        `victim có thể vô tình chấp nhận OTP.`;
+
+                    showMessage(data.message, 'success');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (e) {
+                console.error('Lỗi:', e);
+            }
+        }
+
+        async function verifyAppOTP() {
+            const otp = document.getElementById('appOtpInput').value;
+
+            if (!otp || otp.length < 4) {
+                showMessage('Vui lòng nhập mã OTP!', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/login/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: currentLoginEmail, otp })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Chuyển sang bước 3
+                    document.getElementById('step2Content').classList.remove('active');
+                    document.getElementById('step3Content').classList.add('active');
+                    document.getElementById('dot2').classList.add('done');
+                    document.getElementById('dot3').classList.add('active');
+                    document.getElementById('line2').classList.add('done');
+
+                    document.getElementById('loggedInEmail').textContent = currentLoginEmail;
+                    document.getElementById('newCounter').textContent = data.data.new_counter;
+
+                    document.getElementById('consoleOutput').textContent +=
+                        `\n✅ ĐĂNG NHẬP THÀNH CÔNG\n` +
+                        `Counter mới: ${data.data.new_counter}\n` +
+                        `────────────────────────────────\n` +
+                        `🎯 ATTACK SUCCESSFUL:\n` +
+                        `Attacker đã vượt qua lớp bảo vệ MFA\n` +
+                        `bằng cách lừa victim cung cấp OTP.`;
+
+                    stopFatigueAttack();
+                    showMessage(data.message, 'success');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (e) {
+                console.error('Lỗi:', e);
+            }
+        }
+
+        async function mfaFatigueAttack() {
+            stopFatigueAttack();
+            fatigueCount = 0;
+            document.getElementById('fatigueStatus').textContent = 'Đang gửi yêu cầu OTP liên tục...';
+
+            fatigueInterval = setInterval(async () => {
+                fatigueCount++;
+                document.getElementById('fatigueStatus').textContent =
+                    `Đã gửi ${fatigueCount} yêu cầu OTP... (Victim đang bị làm phiền)`;
+
+                // Gửi request OTP mới
+                const email = currentLoginEmail || document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                try {
+                    await fetch('/api/login/request-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                } catch (e) {
+                    console.error('Lỗi fatigue attack:', e);
+                }
+
+                if (fatigueCount >= 10) {
+                    stopFatigueAttack();
+                    document.getElementById('fatigueStatus').textContent =
+                        '⚠️ Victim đã chặn thông báo hoặc báo cáo đáng ngờ! Attack thất bại.';
+                }
+            }, 2000);
+        }
+
+        function stopFatigueAttack() {
+            if (fatigueInterval) {
+                clearInterval(fatigueInterval);
+                fatigueInterval = null;
+            }
+        }
+
+        function showMessage(msg, type) {
+            const box = document.getElementById('messageBox');
+            box.textContent = msg;
+            box.className = 'message ' + type;
+            setTimeout(() => { box.className = 'message'; }, 5000);
+        }
+    </script>
+</body>
+
+</html>

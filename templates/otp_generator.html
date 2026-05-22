@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Generator - Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-totp {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-hotp {
+            background: #FF9800;
+            color: white;
+        }
+
+        .btn-verify {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-group input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .otp-display {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .otp-display .otp-code {
+            font-size: 4em;
+            font-weight: bold;
+            color: #4CAF50;
+            letter-spacing: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .otp-display .otp-label {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .timer {
+            color: #FF5722;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .steps-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .steps-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .step {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 5px 5px 0;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .step h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .step .detail {
+            color: #555;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+            background: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+
+        .step .description {
+            color: #777;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .verify-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .verify-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .verify-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .verify-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .verify-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .nav-back {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .nav-back:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/" class="nav-back">← Quay lại Dashboard</a>
+
+        <div class="header">
+            <h1>🔢 OTP Generator với Visualization</h1>
+            <p>Xem trực quan từng bước tính toán mã OTP</p>
+        </div>
+
+        <div class="controls">
+            <div class="btn-group">
+                <button class="btn btn-totp" onclick="generateTOTP()">🕐 Sinh TOTP (Time-based)</button>
+                <button class="btn btn-hotp" onclick="generateHOTP()">🔢 Sinh HOTP (Counter-based)</button>
+            </div>
+            <div class="input-group">
+                <label>Secret Key:</label>
+                <input type="text" id="secretInput" value="{{ secret }}" style="width: 250px;">
+                <label>Counter (HOTP):</label>
+                <input type="number" id="counterInput" value="0" min="0" style="width: 80px;">
+                <label>Số chữ số:</label>
+                <input type="number" id="digitsInput" value="6" min="4" max="8" style="width: 60px;">
+            </div>
+        </div>
+
+        <div class="otp-display" id="otpDisplay" style="display: none;">
+            <div class="otp-label">Mã OTP được sinh ra:</div>
+            <div class="otp-code" id="otpCode">------</div>
+            <div class="timer" id="timerDisplay"></div>
+        </div>
+
+        <div class="steps-container" id="stepsContainer">
+            <h2>📋 Chi tiết từng bước tính toán</h2>
+            <p style="color: #999;">Nhấn nút "Sinh TOTP" hoặc "Sinh HOTP" để bắt đầu...</p>
+        </div>
+
+        <div class="verify-section">
+            <h3>✅ Xác minh OTP</h3>
+            <div class="input-group">
+                <input type="text" id="verifyOtpInput" placeholder="Nhập OTP cần xác minh" style="width: 200px;">
+                <button class="btn btn-verify" onclick="verifyOTP()">Xác minh</button>
+            </div>
+            <div id="verifyResult"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentOtpType = null;
+        let timerInterval = null;
+
+        async function generateTOTP() {
+            const secret = document.getElementById('secretInput').value;
+            const digits = parseInt(document.getElementById('digitsInput').value);
+
+            try {
+                const res = await fetch('/api/otp/generate-totp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, digits })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    displayResult(data.data);
+                    currentOtpType = 'totp';
+                    startTimer(data.data.time_remaining);
+                }
+            } catch (e) {
+                console.error('Lỗi:', e);
+            }
+        }
+
+        async function generateHOTP() {
+            const secret = document.getElementById('secretInput').value;
+            const counter = parseInt(document.getElementById('counterInput').value);
+            const digits = parseInt(document.getElementById('digitsInput').value);
+
+            try {
+                const res = await fetch('/api/otp/generate-hotp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, counter, digits })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    displayResult(data.data);
+                    currentOtpType = 'hotp';
+                    stopTimer();
+                    document.getElementById('timerDisplay').textContent = '';
+                }
+            } catch (e) {
+                console.error('Lỗi:', e);
+            }
+        }
+
+        function displayResult(result) {
+            // Hiển thị OTP
+            document.getElementById('otpDisplay').style.display = 'block';
+            document.getElementById('otpCode').textContent = result.otp;
+
+            // Hiển thị các bước
+            const stepsContainer = document.getElementById('stepsContainer');
+            let stepsHTML = '<h2>📋 Chi tiết từng bước tính toán</h2>';
+
+            // Lọc ra các bước (key bắt đầu với 'step')
+            const stepKeys = Object.keys(result).filter(k => k.startsWith('step'));
+
+            stepKeys.forEach((key, index) => {
+                const step = result[key];
+                stepsHTML += `
+                    <div class="step" style="animation-delay: ${index * 0.2}s">
+                        <h3>${step.label}</h3>
+                        <div class="detail">${step.description}</div>
+                    </div>
+                `;
+            });
+
+            // Thêm OTP cuối cùng
+            stepsHTML += `
+                <div class="step" style="animation-delay: ${stepKeys.length * 0.2}s; border-left-color: #4CAF50;">
+                    <h3>🎯 Kết quả: OTP = <strong>${result.otp}</strong></h3>
+                    <div class="description">Loại: ${result.type} | Secret: ${result.step2_secret ? result.step2_secret.secret_base32 : result.step3_secret.secret_base32}</div>
+                </div>
+            `;
+
+            stepsContainer.innerHTML = stepsHTML;
+        }
+
+        function startTimer(seconds) {
+            stopTimer();
+            updateTimerDisplay(seconds);
+
+            timerInterval = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    stopTimer();
+                    document.getElementById('timerDisplay').textContent = 'OTP đã hết hạn!';
+                    document.getElementById('otpCode').style.color = '#FF5722';
+                } else {
+                    updateTimerDisplay(seconds);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(seconds) {
+            document.getElementById('timerDisplay').textContent =
+                `⏱️ Còn lại: ${seconds} giây`;
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        async function verifyOTP() {
+            const otp = document.getElementById('verifyOtpInput').value;
+            const secret = document.getElementById('secretInput').value;
+            const resultDiv = document.getElementById('verifyResult');
+
+            if (!otp) {
+                resultDiv.innerHTML = '<div class="verify-result error">Vui lòng nhập OTP!</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/otp/verify-hotp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, otp })
+                });
+                const data = await res.json();
+
+                if (data.data.valid) {
+                    resultDiv.innerHTML = `<div class="verify-result success">✅ ${data.data.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="verify-result error">❌ ${data.data.message}</div>`;
+                }
+            } catch (e) {
+                console.error('Lỗi:', e);
+            }
+        }
+    </script>
+</body>
+
+</html>

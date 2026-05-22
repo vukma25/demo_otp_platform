@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Demo System - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 1.1em;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.4em;
+        }
+
+        .card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .card.totp {
+            border-top: 4px solid #4CAF50;
+        }
+
+        .card.register {
+            border-top: 4px solid #2196F3;
+        }
+
+        .card.login {
+            border-top: 4px solid #FF9800;
+        }
+
+        .status-bar {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-bar h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #666;
+        }
+
+        .status-value {
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 OTP Authentication Demo</h1>
+        <p class="subtitle">Hệ thống minh họa các phương thức xác thực OTP trong Social Engineering</p>
+
+        <div class="status-bar" id="statusBar">
+            <h3>📊 Trạng thái hệ thống</h3>
+            <div class="status-item">
+                <span class="status-label">Secret Key Demo:</span>
+                <span class="status-value" id="secretKey">Đang tải...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">TOTP hiện tại:</span>
+                <span class="status-value" id="currentTotp">Đang tải...</span>
+            </div>
+        </div>
+
+        <div class="cards">
+            <a href="/otp-generator" class="card totp">
+                <div class="card-icon">🔢</div>
+                <h2>OTP Generator</h2>
+                <p>Xem trực quan từng bước sinh mã OTP (TOTP & HOTP). Hiểu rõ cơ chế hoạt động bên trong.</p>
+            </a>
+
+            <a href="/register" class="card register">
+                <div class="card-icon">📧</div>
+                <h2>Đăng ký (Email OTP)</h2>
+                <p>Demo quy trình đăng ký tài khoản với xác thực OTP qua Email. Mô phỏng bước Social Engineering.</p>
+            </a>
+
+            <a href="/login" class="card login">
+                <div class="card-icon">📱</div>
+                <h2>Đăng nhập (App OTP)</h2>
+                <p>Demo quy trình đăng nhập với xác thực OTP qua App. Mô phỏng tấn công MFA Fatigue.</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Tự động cập nhật trạng thái
+        async function updateStatus() {
+            try {
+                const res = await fetch('/api/dashboard');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('secretKey').textContent = data.data.demo_secret;
+                    document.getElementById('currentTotp').textContent = data.data.current_totp;
+                }
+            } catch (e) {
+                console.error('Lỗi cập nhật trạng thái:', e);
+            }
+        }
+
+        updateStatus();
+        setInterval(updateStatus, 30000); // Cập nhật mỗi 30 giây
+    </script>
+</body>
+
+</html>
