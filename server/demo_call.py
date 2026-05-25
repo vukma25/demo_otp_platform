@@ -29,6 +29,7 @@ def make_call():
 
     try:
         call = client.calls.create(
+            record=True,
             url=f'{os.getenv("DOMAIN_NAME")}/answer',  # URL webhook xử lý khi có người nhấc máy
             to=to_number,
             from_=os.getenv('TWILIO_PHONE_NUMBER')

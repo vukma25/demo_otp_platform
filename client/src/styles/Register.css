@@ -1,0 +1,500 @@
+.register-frame {
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 24px;
+    font-family: Inter, Arial, sans-serif;
+}
+
+.register-frame *,
+.register-frame *::before,
+.register-frame *::after {
+    box-sizing: border-box;
+}
+
+.top-nav,
+.brand,
+.step-card,
+.field-box,
+.form-actions,
+.detail-head,
+.data-row,
+.measure,
+.telemetry {
+    display: flex;
+    align-items: center;
+}
+
+.top-nav {
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.brand {
+    gap: 8px;
+    font: 700 16px/1 "IBM Plex Mono", "Courier New", monospace;
+}
+
+.brand-mark {
+    width: 18px;
+    height: 18px;
+    background: #4a9fd8;
+}
+
+.nav-meta,
+.eyebrow,
+.field-status,
+.rules-title,
+.secondary-action,
+.panel-eyebrow,
+.detail-title-wrap p,
+.data-row span,
+.status-pill,
+.telemetry span:first-child {
+    font-family: "Geist Mono", "Courier New", monospace;
+}
+
+.nav-meta {
+    color: #666666;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.hero-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.eyebrow,
+.panel-eyebrow {
+    color: #4a9fd8;
+    font-size: 11px;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.hero-copy h1 {
+    margin: 0;
+    font: 700 28px/1.08 "IBM Plex Mono", "Courier New", monospace;
+    letter-spacing: 0;
+}
+
+.hero-copy p {
+    width: 100%;
+    margin: 0;
+    color: #666666;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.stepper {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    height: 64px;
+    margin-bottom: 16px;
+}
+
+.step-card {
+    gap: 10px;
+    min-width: 0;
+    height: 64px;
+    padding: 10px;
+    background: #f7f8fa;
+    border: 1px solid #eef0f2;
+}
+
+.step-card-active {
+    background: #1a1a1a;
+    border-color: #1a1a1a;
+    color: #ffffff;
+}
+
+.step-number {
+    display: grid;
+    place-items: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #1a1a1a;
+    font: 700 13px/1 "IBM Plex Mono", "Courier New", monospace;
+}
+
+.step-number-active {
+    color: #ffffff;
+    background: #4a9fd8;
+    border-color: #4a9fd8;
+}
+
+.step-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.step-title {
+    font: 700 13px/1 "IBM Plex Mono", "Courier New", monospace;
+    white-space: nowrap;
+}
+
+.step-meta {
+    color: #888888;
+    font: 400 9px/1 "Geist Mono", "Courier New", monospace;
+}
+
+.step-card-active .step-meta {
+    color: #ffffff;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 460px) 278px;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.register-panel,
+.side-panel {
+    border: 1px solid #1a1a1a;
+}
+
+.register-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 335px;
+    padding: 14px;
+    background: #f7f8fa;
+}
+
+.form-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.form-kicker {
+    color: #4a9fd8;
+    font: 400 10px/1 "Geist Mono", "Courier New", monospace;
+}
+
+.form-header h2,
+.panel-title,
+.detail-title-wrap h3 {
+    margin: 0;
+    font-family: "IBM Plex Mono", "Courier New", monospace;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.form-header h2 {
+    font-size: 18px;
+    line-height: 1.1;
+}
+
+.form-header p {
+    margin: 0;
+    color: #666666;
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.credential-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.field-label {
+    font: 700 12px/1 "IBM Plex Mono", "Courier New", monospace;
+}
+
+.field-box {
+    justify-content: space-between;
+    height: 38px;
+    padding: 8px 10px;
+    background: #ffffff;
+    border: 1px solid #1a1a1a;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.password-value {
+    font: 400 15px/1 "IBM Plex Mono", "Courier New", monospace;
+    letter-spacing: 0;
+}
+
+.field-status {
+    color: #4a9fd8;
+    font-size: 10px;
+    line-height: 1;
+}
+
+.rules {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px;
+    background: #ffffff;
+    border: 1px solid #eef0f2;
+}
+
+.rules-title {
+    color: #888888;
+    font-size: 10px;
+    line-height: 1;
+}
+
+.rules p {
+    margin: 0;
+    color: #666666;
+    font-size: 11px;
+    line-height: 1.25;
+}
+
+.form-actions {
+    gap: 10px;
+}
+
+.primary-action {
+    width: 174px;
+    height: 38px;
+    border: 0;
+    background: #1a1a1a;
+    color: #ffffff;
+    font: 700 13px/1 "IBM Plex Mono", "Courier New", monospace;
+    cursor: pointer;
+}
+
+.secondary-action {
+    color: #666666;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 335px;
+    padding: 12px;
+    background: #ffffff;
+}
+
+.panel-header {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.panel-eyebrow {
+    font-size: 9px;
+}
+
+.panel-title {
+    font-size: 15px;
+    line-height: 1.1;
+}
+
+.panel-header p {
+    margin: 0;
+    color: #666666;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.panel-rule {
+    height: 1px;
+    background: #eef0f2;
+}
+
+.detail-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: #ffffff;
+    border: 1px solid #eef0f2;
+}
+
+.detail-card-active {
+    background: #f7f8fa;
+    border-color: #1a1a1a;
+}
+
+.detail-head {
+    gap: 8px;
+}
+
+.detail-index {
+    display: grid;
+    place-items: center;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #1a1a1a;
+    color: #1a1a1a;
+    font: 700 10px/1 "IBM Plex Mono", "Courier New", monospace;
+}
+
+.detail-index-active {
+    color: #ffffff;
+    background: #4a9fd8;
+    border-color: #4a9fd8;
+}
+
+.detail-title-wrap {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.detail-title-wrap h3 {
+    font-size: 12px;
+    line-height: 1.1;
+}
+
+.detail-title-wrap p {
+    margin: 0;
+    color: #888888;
+    font-size: 8px;
+    line-height: 1;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 7px;
+    border: 1px solid #eef0f2;
+    background: #f7f8fa;
+    color: #1a1a1a;
+    font-size: 8px;
+    line-height: 1;
+}
+
+.status-pill-active {
+    border-color: #1a1a1a;
+    background: #ffffff;
+}
+
+.data-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.data-row {
+    gap: 8px;
+    min-height: 12px;
+}
+
+.data-row span {
+    flex: 0 0 49px;
+    color: #888888;
+    font-size: 9px;
+    line-height: 1;
+}
+
+.data-row strong {
+    flex: 1;
+    color: #1a1a1a;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+.measure {
+    gap: 4px;
+    height: 1px;
+}
+
+.measure span {
+    height: 1px;
+    background: #eef0f2;
+}
+
+.measure span:first-child {
+    background: #4a9fd8;
+    opacity: 0.3;
+}
+
+.measure span:nth-child(2) {
+    background: #1a1a1a;
+    opacity: 0.18;
+}
+
+.measure span:last-child {
+    flex: 1;
+}
+
+.detail-card:not(.detail-card-active) .measure span:first-child {
+    background: #1a1a1a;
+    opacity: 0.18;
+}
+
+.detail-card:not(.detail-card-active) .measure span:nth-child(2) {
+    background: #4a9fd8;
+    opacity: 0.25;
+}
+
+.telemetry {
+    gap: 8px;
+    min-height: 28px;
+    padding: 8px 10px;
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+.telemetry span:first-child {
+    font-size: 9px;
+    line-height: 1;
+}
+
+.telemetry strong {
+    font: 700 12px/1 "IBM Plex Mono", "Courier New", monospace;
+}
+
+@media (max-width: 760px) {
+    .register-frame {
+        padding: 18px;
+    }
+
+    .top-nav,
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .top-nav {
+        align-items: flex-start;
+        gap: 10px;
+        flex-direction: column;
+    }
+
+    .stepper {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .content-grid {
+        display: grid;
+    }
+
+    .register-panel,
+    .side-panel {
+        min-height: auto;
+    }
+}
