@@ -115,7 +115,7 @@ export default function OtpGenerator() {
     const [generationSteps, setGenerationSteps] = useState([])
     const [otpStack, setOtpStack] = useState([])
     const [timeRemaining, setTimeRemaining] = useState(0)
-    const [totpSlotTime, setTotpSlotTime] = useState(null) // Lưu thời gian slot khi sinh OTP
+    const [totpSlotTime, setTotpSlotTime] = useState(null)
     const [onlyOnce, setOnlyOnce] = useState(true)
 
     const reset = () => { setOtp(""); setGenerationSteps([]); setOtpStack([]); setTimeRemaining(0); setTotpSlotTime(null); setOnlyOnce(true) }
@@ -266,12 +266,11 @@ export default function OtpGenerator() {
     const handleGenerateTOTP = useCallback(() => {
         const res = generateTOTPWithDebug.current(init.secret, init.step || 30)
         setOtp(res.otp)
-        setTotpSlotTime(res.slotStartTime) // Lưu thời gian bắt đầu của slot hiện tại
+        setTotpSlotTime(res.slotStartTime)
         setGenerationSteps(res.debug_info)
         updateOtpStack(res.otp)
     }, [init])
 
-    // TOTP Countdown Timer
     useEffect(() => {
         if (type !== 'totp' || !init.secret) return;
         if (onlyOnce) { handleGenerateTOTP(); setOnlyOnce(false) }

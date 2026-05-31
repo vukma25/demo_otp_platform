@@ -1,26 +1,22 @@
 import { useState } from "react"
 import { useNavigate } from "react-router";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../redux/features/auth";
 import CompactPanel from "../Components/CompactPanel";
 import OtpGenerator from "../Components/OtpGenerator";
 import "../styles/Home.css"
 
-const attackSteps = [
-    ["01", "Phish code"],
-    ["02", "Replay"],
-    ["03", "Session"],
-];
-
-const authSteps = [
-    ["01", "Bind user"],
-    ["02", "Verify OTP"],
-    ["03", "Issue token"],
-];
-
 export default function Home() {
+    const { user } = useSelector((state) => state.auth)
+    const dispatch = useDispatch()
+
     const navigate = useNavigate()
     const [tab, setTab] = useState(0)
 
     const handleChangeTab = (tab) => { setTab(tab) }
+    const handleLogout = () => {
+        dispatch(logout())
+    }
 
     return (
         <main className="app" aria-label="OTP Lab demos">
@@ -29,7 +25,11 @@ export default function Home() {
                     <span className="brand-mark" />
                     <span className="brand-text">OpTimus Prime</span>
                 </div>
-                {/* <p className="nav-meta">Generate&nbsp;&nbsp; Attack&nbsp;&nbsp; Apply</p> */}
+                {user && <div>
+                    <p className="nav-meta">{user.user_id}</p>
+                    <p className="nav-meta">{user.email}</p>
+                    <button onClick={handleLogout}>Đăng xuất</button>
+                </div>}
             </nav>
 
             <section className="hero">
@@ -57,24 +57,7 @@ export default function Home() {
 
             <section className="content-grid">
                 {tab === 1 && <OtpGenerator />}
-                {tab === 2 && <aside className="side-panels">
-                    <CompactPanel
-                        kicker="Tab 02 / Offense Lab"
-                        title="Attack OTP"
-                        badge="SIM"
-                        steps={attackSteps}
-                        metaLeft="WINDOW 30s"
-                        metaRight="RISK: real-time relay"
-                    />
-                    <CompactPanel
-                        kicker="Tab 03 / OTP Appliance"
-                        title="Login / Register OTP"
-                        badge="PASS"
-                        steps={authSteps}
-                        metaLeft="TOTP SHA-1"
-                        metaRight="CONTROL: rate-limit + nonce"
-                    />
-                </aside>}
+                {tab === 2 && <div></div>}
             </section>
         </main>
     );

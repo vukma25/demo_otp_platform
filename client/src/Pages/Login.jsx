@@ -1,43 +1,35 @@
-import React from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux"
+import { useNavigate } from "react-router";
+import Field from "../Components/Field";
+import { setSuccess, login } from "../redux/features/auth";
 import "../styles/Login.css"
 
-const headerFields = [
-  { label: "Username", value: "alice.operator", status: "matched" },
-  { label: "Email", value: "alice@otp-lab.dev", status: "confirmed" },
-  { label: "OTP", value: "428 619", status: "18s left", strong: true },
-];
-
-const requiredFields = [
-  { index: "01", label: "Username", state: "ID" },
-  { index: "02", label: "Email", state: "DELIVERY" },
-  { index: "03", label: "OTP", state: "6 DIGITS", active: true },
-];
-
-function FieldBlock({ label, value, status, strong }) {
-  return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      <span className="field-box">
-        <span className={strong ? "field-value field-value-strong" : "field-value"}>
-          {value}
-        </span>
-        <span className="field-status">{status}</span>
-      </span>
-    </label>
-  );
-}
-
-function SupportRow({ index, label, state, active }) {
-  return (
-    <div className={`support-row${active ? " support-row-active" : ""}`}>
-      <span className="support-index">{index}</span>
-      <span className="support-label">{label}</span>
-      <span className="support-state">{state}</span>
-    </div>
-  );
-}
-
 export default function Login() {
+  const { success, authLoading, error } = useSelector((state) => state.auth)
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  const [loginData, setLoginData] = useState({ "email": "tuanvu.actvn.edu@gmail.com", "password": "12345", "otp": "123456" })
+
+  const handleChangeEmail = (e) => {
+    setLoginData(prev => ({ ...prev, email: e.target.value }))
+  }
+  const handleChangePassword = (e) => {
+    setLoginData(prev => ({ ...prev, password: e.target.value }))
+  }
+  const handleChangeOTP = (e) => {
+    setLoginData(prev => ({ ...prev, otp: e.target.value }))
+  }
+
+  const handleLogin = () => {
+    dispatch(login(loginData))
+  }
+
+  useEffect(() => {
+    if (success) { console.log(success, "OK"); navigate("/"); dispatch(setSuccess()) }
+  }, [success])
+
   return (
     <main className="login-frame" aria-label="OTP login">
       <nav className="top-nav">
@@ -69,14 +61,16 @@ export default function Login() {
           </header>
 
           <div className="fields">
-            {headerFields.map((field) => (
-              <FieldBlock key={field.label} {...field} />
-            ))}
+            <Field label={"Email"} value={loginData.email} func={handleChangeEmail} />
+            <Field label={"Password"} type={"password"} value={loginData.password} func={handleChangePassword} />
+            <Field label={"OTP"} value={loginData.otp} func={handleChangeOTP} />
           </div>
 
           <div className="login-actions">
-            <button className="button" type="button">
-              Verify login
+            <button
+              className="button" disabled={authLoading}
+              onClick={handleLogin}>
+              Login
             </button>
           </div>
 
@@ -88,48 +82,6 @@ export default function Login() {
             </p>
           </aside>
         </section>
-
-        <aside className="support-panel" aria-label="OTP login support panel">
-          <header className="support-header">
-            <div className="support-topline">
-              <div className="panel-eyebrow">Auth support / OTP</div>
-              <span className="ready-badge">READY</span>
-            </div>
-            <h2>Three-field sign-in</h2>
-            <p>
-              Username, email, and one-time code only. No password or scan step
-              is part of this flow.
-            </p>
-          </header>
-
-          <section className="status-block">
-            <div className="status-row">
-              <span className="status-label">SESSION STATE</span>
-              <span className="ready-badge">READY</span>
-            </div>
-            <div className="status-copy">
-              Send the OTP to the email on this form; keep the username stable
-              during retry.
-            </div>
-          </section>
-
-          <section className="required-fields" aria-label="Required inputs">
-            <div className="required-title">REQUIRED INPUTS</div>
-            {requiredFields.map((field) => (
-              <SupportRow key={field.index} {...field} />
-            ))}
-          </section>
-
-          <section className="help-block">
-            <div className="help-title">HELP CONDITIONS</div>
-            <p>
-              Expired code? Verify email, then request a new OTP. Attempts stay
-              linked to the same username.
-            </p>
-            <div className="help-rule" />
-            <div className="help-meta">TTL 05:00 / RETRY 03</div>
-          </section>
-        </aside>
       </section>
     </main>
   );

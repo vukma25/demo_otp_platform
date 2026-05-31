@@ -1,22 +1,13 @@
-import React from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router"
+import Field from "../Components/Field";
 import "../styles/Register.css"
 
 const steps = [
-  { number: "1", title: "Register", meta: "credentials", active: true },
-  { number: "2", title: "Verify", meta: "otp code" },
-  { number: "3", title: "Notification", meta: "delivery ready" },
+  { number: 0, title: "Register", meta: "credentials" },
+  { number: 1, title: "Verify", meta: "otp code" },
+  { number: 2, title: "Notification", meta: "delivery ready" },
 ];
-
-const dataRows = {
-  verify: [
-    ["challenge", "6-digit SMS + email fallback"],
-    ["guard", "3 attempts / 5 min lock"],
-  ],
-  notify: [
-    ["route", "email receipt + device alert"],
-    ["event", "account.created after OTP pass"],
-  ],
-};
 
 function StepCard({ number, title, meta, active }) {
   return (
@@ -29,18 +20,6 @@ function StepCard({ number, title, meta, active }) {
         <div className="step-meta">{meta}</div>
       </div>
     </div>
-  );
-}
-
-function Field({ label, value, status, password }) {
-  return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      <span className="field-box">
-        <input type="text" />
-      </span>
-      <span className="field-status">{status}</span>
-    </label>
   );
 }
 
@@ -87,6 +66,103 @@ function DetailCard({
 }
 
 export default function Register() {
+  const navigate = useNavigate()
+  const [formData, setFormData] = useState({ email: "", password: "" })
+  const [confirmPw, setConfirmPw] = useState("")
+  const [notice, setNotice] = useState("")
+  const [step, setStep] = useState(0)
+  const [otp, setOtp] = useState("")
+  const [verifyData, setVerifyData] = useState(null)
+
+  const handleChangeEmail = (e) => {
+    setFormData(prev => ({ ...prev, email: e.target.value }))
+  }
+  const handleChangePassword = (e) => {
+    setFormData(prev => ({ ...prev, password: e.target.value }))
+  }
+  const handleConfirmPassword = (e) => {
+    setConfirmPw(e.target.value)
+  }
+  const handleTypeOtp = (e) => {
+    setOtp(e.target.value)
+  }
+
+  const submitFormData = async () => {
+    if (formData.email.length === 0) { setNotice("Email không được bỏ trống"); return }
+    if (formData.password.length === 0) { setNotice("Mật khẩu không được để trống"); return }
+    if (confirmPw.length === 0) { setNotice("Xác nhận lại mật khâu không được để trống"); return }
+    if (confirmPw !== formData.password) { setNotice("Xác nhận lại mật khảu không khớp"); return }
+
+    try {
+      const form = new FormData()
+      form.append("email", formData.email)
+      form.append("password", formData.password)
+
+      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/register`, {
+        "method": "POST",
+        "body": form,
+        "credentials": "include"
+      })
+      const data = await response.json()
+      setStep(1)
+    } catch (err) {
+      setNotice(`Có lỗi xảy ra ${err}`)
+    }
+  }
+
+  const checkValidateOtp = (otpVerifier) => {
+    return /^\d+$/.test(otpVerifier) && otpVerifier.length === 6;
+  }
+  const verifyEmail = async () => {
+    if (!checkValidateOtp(otp)) return
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/verify-otp`, {
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": JSON.stringify({ "otp": otp }),
+        "credentials": "include"
+      })
+      if (response.status === 200) {
+        const data = await response.json()
+        console.log(data)
+        setVerifyData(data)
+        setOtp("")
+        setStep(2)
+      }
+    } catch (err) {
+      setNotice(`Có lỗi xảy ra ${err}`)
+    }
+  }
+
+  const activate2FA = async () => {
+    if (!checkValidateOtp(otp)) return
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/enable-totp`, {
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": JSON.stringify({ "id": verifyData.user_id, "otp": otp }),
+      })
+      if (response.status === 200) {
+        const data = await response.json()
+        console.log(data)
+        navigate("/login")
+      }
+    } catch (err) {
+      setNotice(`Có lỗi xảy ra ${err}`)
+    }
+  }
+
+  useEffect(() => {
+    let timer = null
+    if (notice.length !== 0) {
+      timer = setTimeout(() => {
+        setNotice("")
+      }, 1500)
+    }
+
+    return () => { if (timer) clearTimeout(timer) }
+  }, [notice])
+
   return (
     <main className="register-frame" aria-label="Secure account onboarding">
       <nav className="top-nav">
@@ -107,12 +183,15 @@ export default function Register() {
       </section>
 
       <section className="stepper" aria-label="Registration progress">
-        {steps.map((step) => (
-          <StepCard key={step.number} {...step} />
+        {steps.map((st) => (
+          <StepCard
+            key={st.number}
+            active={st.number === step}
+            {...st} number={st.number + 1} />
         ))}
       </section>
 
-      <section className="content-grid">
+      {step === 0 && <section className="content-grid">
         <section className="register-panel" aria-label="Register credentials">
           <header className="form-header">
             <div className="form-kicker">STEP 01 / REGISTER</div>
@@ -124,62 +203,36 @@ export default function Register() {
           </header>
 
           <div className="credential-fields">
-            <Field label="Username" value="alice.operator" status="unique" />
-            <Field label="Password" status="strong" password />
+            <Field label="Username" value={formData.email} func={handleChangeEmail} />
+            <Field type={"password"} label="Password" value={formData.password} func={handleChangePassword} />
+            <Field type={"password"} label="Confirm password" value={confirmPw} func={handleConfirmPassword} />
           </div>
 
-          <aside className="rules">
-            <div className="rules-title">Credential policy</div>
-            <p>
-              12+ characters &middot; mixed case &middot; number &middot;
-              symbol &middot; checked against breached-password list
-            </p>
-          </aside>
+          {!!notice.length && <aside className="rules">
+            <div className="rules-title">Cảnh báo</div>
+            <p>{notice}</p>
+          </aside>}
 
           <div className="form-actions">
-            <button className="primary-action" type="button">
+            <button
+              className="primary-action" type="button"
+              onClick={submitFormData}>
               Create account
             </button>
             <span className="secondary-action">Next: verify OTP</span>
           </div>
         </section>
+      </section>}
+      {step === 1 && <section className="content-grid">
+        <input type="text" onChange={handleTypeOtp} />
+        <button onClick={verifyEmail}>Xác thực email</button>
+      </section>}
+      {step === 2 && <section className="content-grid">
+        <img src={verifyData?.qr_code} alt="Mã quét 2FA" />
 
-        <aside className="side-panel" aria-label="Verification and delivery">
-          <header className="panel-header">
-            <div className="panel-eyebrow">Verification / Delivery</div>
-            <h2 className="panel-title">Channel readiness</h2>
-            <p>
-              Compact checks that follow the register step before notification
-              handoff.
-            </p>
-          </header>
-          <div className="panel-rule" />
-
-          <DetailCard
-            index="02"
-            title="Verify OTP channel"
-            caption="CODE ACCEPTANCE WINDOW"
-            status="ARMED"
-            rows={dataRows.verify}
-            active
-            measure={["52px", "18px"]}
-          />
-
-          <DetailCard
-            index="03"
-            title="Notification handoff"
-            caption="POST-VERIFY SIGNALS"
-            status="QUEUED"
-            rows={dataRows.notify}
-            measure={["34px", "46px"]}
-          />
-
-          <div className="telemetry">
-            <span>TTL</span>
-            <strong>04:58&nbsp; / &nbsp;RETRY 0</strong>
-          </div>
-        </aside>
-      </section>
+        <input type="text" id="totp_code" placeholder="Nhập mã 6 số" onChange={handleTypeOtp} />
+        <button onClick={activate2FA}>Kích hoạt 2FA</button>
+      </section>}
     </main>
   );
 }
