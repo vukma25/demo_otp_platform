@@ -3,42 +3,38 @@ import oracledb
 from flask import Blueprint, request, jsonify, g, make_response
 import jwt
 import pyotp
+from datetime import datetime, timedelta, timezone
 from helper.store import store_oracle
-from helper.totp_secret_key import encrypt_secret, decrypt_secret, generate_totp_qr_base64
+from helper.totp_secret_key import encrypt_secret, generate_totp_qr_base64
 from helper.web_token import \
     generate_access_token, generate_refresh_token, \
-    decode_refresh_token, REFRESH_TOKEN_EXPIRE_DAYS
+    decode_refresh_token, REFRESH_TOKEN_EXPIRE_DAYS, \
+    generate_login_session_token, decode_login_session_token
 from helper.hash import get_hash, verify_hash_value
-from  middleware.auth import auth_required
+from middleware.auth import auth_required
 from services.email import send_email
-from helper.verify_email import verify_email_on_oracle
-from helper.session import generate_otp
+from helper.verify import verify_email_on_oracle, verify_totp, MAX_ATTEMPTS
+from helper.session import generate_otp, hash_otp
 from helper.otp_engine import OTPEngine
+from helper.prevent_brute_force import limit_attempt
 
 main_bp = Blueprint('main', __name__)
 
 DEMO_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+SESSION_EXPIRE = 10
 
-def email_exists(conn, email: str) -> bool:
+def email_exists_on_table(conn, email: str, table_name="users") -> bool:
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT 1
-        FROM (
-            SELECT email FROM registration
-            WHERE email = :email
-
-            UNION ALL
-
-            SELECT email FROM users
-            WHERE email = :email
-        )
+    cursor.execute(f"""
+        SELECT * FROM {table_name}
+        WHERE email = :email
         FETCH FIRST 1 ROWS ONLY
     """, {"email": email})
 
     row = cursor.fetchone()
 
-    return row is not None
+    return row
 
 def create_user(conn, email: str, password_hash: str) -> int:
     """Tạo user trong bảng users, trả về id của user mới."""
@@ -141,15 +137,35 @@ def register():
         return make_response(jsonify({"message": "Thiếu thông tin"}), 400)
     
     conn = g.db_conn
-    exist = email_exists(conn, email)
-    if exist:
+    exist_registration = email_exists_on_table(conn, email, table_name="registration")
+    if exist_registration is not None:
+        session_token = exist_registration[0]
+        password_hash = exist_registration[2]
+        created_at = exist_registration[3]
+        time_life = created_at + timedelta(minutes=SESSION_EXPIRE)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        age = int((time_life - now).total_seconds())
+        pw_hash = get_hash(password)
+        
+        if password_hash != pw_hash:
+            conn.cursor().execute("""
+                UPDATE registration SET password_hash = :pw_hash WHERE email = :email                     
+            """, {"pw_hash": pw_hash, "email": email})
+            conn.commit()
+        
+        response = make_response(jsonify({"message": "Tồn tại phiên đăng ký đang chờ xác thực email"}), 200)
+        response.set_cookie('reg_session', session_token, httponly=True, secure=False, samesite='Lax', max_age=age)
+        return response
+    
+    exist_user = email_exists_on_table(conn, email)
+    if exist_user is not None:
         return make_response(jsonify({"message": "Email đã được sử dụng"}), 400)
 
     # Hash password ngay
     password_hash = get_hash(password)
     
     otp = generate_otp(6)
-    session_token = store_oracle(email, password_hash, otp)  # hoặc redis
+    session_token = store_oracle(email, password_hash, otp)
     
     success = send_email(email, otp)
     if success: print("Đã gửi email xác thực")
@@ -157,11 +173,11 @@ def register():
     resp = make_response(jsonify({
         "message": "Đã chấp nhận yêu cầu, chờ xác thực email"
     }), 202)
-    resp.set_cookie('reg_session', session_token, httponly=True, secure=False, samesite='Lax', max_age=600)
+    resp.set_cookie('reg_session', session_token, httponly=True, secure=False, samesite='Lax', max_age=SESSION_EXPIRE * 60)
     return resp
 
-@main_bp.route('/verify-otp', methods=['POST'])
-def verify_otp():
+@main_bp.route('/verify-email', methods=['POST'])
+def verify_email():
     conn = g.db_conn
     session_token = request.cookies.get('reg_session')
     data = request.get_json()
@@ -181,69 +197,79 @@ def verify_otp():
             "message": "Xác thực email thành công",
             "user_id": user_info["user_id"],
             "qr_code": qr_code_base64
-        }))
+        }), 200)
         resp.delete_cookie('reg_session')
         
         return resp
+    else:
+        resp = make_response(jsonify({
+            "message": "Xác thực OTP thất bại",
+            "error": result.get("error"),
+            "attempt": result.get("remain_attempt", 0)
+        }), 401)
+        return resp
+
+@main_bp.route('/resend-verify-email', methods=['POST'])
+def resend_otp_verify_email():
+    conn = g.db_conn
+    reg_session = request.cookies.get('reg_session')
+    email = request.get_json().get("email")
+    if not reg_session:
+        return make_response(jsonify({"message":"Phiên đăng ký hết hạn. Hãy tiến hành đăng ký lại"}), 400)
     
-    resp = make_response(jsonify({
-        "message": "Xác thực OTP thất bại"
-    }), 400)
-    return resp
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT email FROM registration
+        WHERE session_token = :session_token               
+    """, {"session_token": reg_session})
+    row = cursor.fetchone()
+    if row is None:
+        return make_response(jsonify({"message":"Không tìm thấy phiên đăng ký hoặc đã hết hạn"}), 404)
+    
+    email = row[0]
+    new_otp = generate_otp()
+    new_hash_otp = hash_otp(new_otp)
+    
+    cursor.execute("""
+        UPDATE sessions
+        SET otp_hash = :new_hash_otp, attempts = 0
+        WHERE registration_session_token = :reg_session
+    """, {"new_hash_otp": new_hash_otp, "reg_session": reg_session})
+    conn.commit()
+    
+    send_email(email, new_otp)
+    
+    return make_response(jsonify({"message": "Gửi mã xác thực thành công"}))
 
 @main_bp.route('/enable-totp', methods=['POST'])
 def enable_totp():
-    conn = g.db_conn
-    data = request.get_json()
-    
-    user_id_hex = data.get("id")
-    totp_code = data.get("otp")
-    
-    if not user_id_hex or not totp_code:
-        return make_response(jsonify({"message": "Thiếu thông tin yêu cầu"}), 400)
+    try:
+        conn = g.db_conn
+        data = request.get_json()
         
-    cursor = conn.cursor()
-    # Truy vấn lấy secret đã mã hóa dựa trên user_id (kiểu RAW)
-    cursor.execute("""
-        SELECT totp_secret_encrypted FROM users 
-        WHERE user_id = HEXTORAW(:user_id)
-    """, {"user_id": user_id_hex})
-    
-    row = cursor.fetchone()
-    if not row:
-        return make_response(jsonify({"message": "Không tìm thấy người dùng"}), 404)
+        user_id_hex = data.get("id")
+        totp_code = data.get("otp")
         
-    encrypted_secret = row[0]
-    
-    print("OK")
-    # try:
-    # 1. Giải mã chuỗi AES để lấy Secret Key Base32 gốc của TOTP
-    raw_secret = decrypt_secret(encrypted_secret)
-    print("0")
-    # 2. Khởi tạo thực thể TOTP với key gốc
-    totp = pyotp.TOTP(raw_secret)
-    
-    print("1")
-    # 3. Xác thực mã 6 số với tham số valid_window=1 (cho phép sai số +-30 giây)
-    is_valid = totp.verify(totp_code, valid_window=1)
-    print("2")
-    if is_valid:
-        # Nếu mã đúng, tiến hành cập nhật totp_enable = 1 vào Database
-        cursor.execute("""
-            UPDATE users 
-            SET totp_enable = 1, updated_at = SYS_EXTRACT_UTC(SYSTIMESTAMP)
-            WHERE user_id = HEXTORAW(:user_id)
-        """, {"user_id": user_id_hex})
-        conn.commit()
-        print("3")
-        return make_response(jsonify({"message": "Kích hoạt xác thực 2 lớp (TOTP) thành công!"}), 200)
-    else:
-        print("4")
-        return make_response(jsonify({"message": "Mã TOTP không chính xác hoặc đã hết hạn"}), 400)
+        if not user_id_hex or not totp_code:
+            return make_response(jsonify({"message": "Thiếu thông tin yêu cầu"}), 400)
             
-    # except Exception as e:
-    #     print(str(e))
-    #     return make_response(jsonify({"message": f"Lỗi hệ thống xử lý 2FA: {str(e)}"}), 500)
+        is_valid = verify_totp(conn, user_id_hex, totp_code)
+        if is_valid is None:
+            return make_response(jsonify({"message": "Không thể tìm thấy người dùng"}), 404)
+        
+        if is_valid:
+            conn.cursor().execute("""
+                UPDATE users 
+                SET totp_enable = 1, updated_at = SYS_EXTRACT_UTC(SYSTIMESTAMP)
+                WHERE user_id = HEXTORAW(:user_id)
+            """, {"user_id": user_id_hex})
+            conn.commit()
+            return make_response(jsonify({"message": "Kích hoạt xác thực 2 lớp (TOTP) thành công!"}), 200)
+        else:
+            return make_response(jsonify({"message": "Mã TOTP không chính xác hoặc đã hết hạn"}), 400)
+            
+    except Exception as e:
+        return make_response(jsonify({"message": f"Lỗi hệ thống xử lý 2FA: {str(e)}"}), 500)
 
 @main_bp.route('/login', methods=['POST'])
 def login():
@@ -254,41 +280,166 @@ def login():
     conn = g.db_conn
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT user_id, password_hash FROM users
+        SELECT user_id, password_hash, totp_enable FROM users
         WHERE email = :email
         FETCH FIRST 1 ROWS ONLY          
     """, {"email": email})
     
     row = cursor.fetchone()
     if not row:
-        return make_response(jsonify({
-            "message": "Email hoặc mật khẩu sai"
-        }), 400)
+        return make_response(jsonify({"message": "Email hoặc mật khẩu sai"}), 400)
         
-    user_id, password_hash = row
+    user_id_bytes, password_hash, totp_enable = row
+    user_id_hex = user_id_bytes.hex()
+    is_totp = bool(totp_enable)
+    
     match = verify_hash_value(password, password_hash)
     if not match:
-        return make_response(jsonify({
-            "message": "Email hoặc mật khẩu sai"
-        }), 400)
+        return make_response(jsonify({"message": "Email hoặc mật khẩu sai"}), 400)
+    
+    # nếu như tồn tại phiên đăng nhập
+    cursor.execute("""
+        SELECT session_id, expires_at FROM sessions
+        WHERE user_id = HEXTORAW(:user_id)
+        FETCH FIRST 1 ROWS ONLY          
+    """, {"user_id": user_id_hex})
+    session = cursor.fetchone()
+    if session:
+        otp_type_label = "totp" if is_totp else "hotp"
+        session_id = session[0]
+        expires_at = session[1]
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        age = int((expires_at - now).total_seconds())
+        
+        token = generate_login_session_token(
+            session_id, user_id_hex, email, 
+            otp_type_label, expire)
+    
+        response = make_response(jsonify({
+            "message": "Phiên đăng nhập đang diễn ra. Chờ xác thực OTP", 
+            "otp_type": otp_type_label
+        }), 200)
+        
+        response.set_cookie(
+            'login_session_token',
+            token,
+            httponly=True,
+            secure=False,
+            samesite='Lax',
+            max_age=age
+        )
+        
+        return response
+    #============================================================================
 
-    uid = user_id.hex()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=SESSION_EXPIRE)
+    if not is_totp:
+        otp = generate_otp()
+        otp_hash = hash_otp(otp)
+        
+        session_id_var = cursor.var(oracledb.DB_TYPE_RAW)
+        cursor.execute("""
+            INSERT INTO sessions (user_id, otp_hash, expires_at)
+            VALUES (HEXTORAW(:1), :2, :3)
+            RETURNING session_id INTO :4          
+        """, (user_id_hex, otp_hash, expire, session_id_var))
+        conn.commit()
+        
+        send_email(email, otp)
+        otp_type_label = "hotp"
+    else:
+        session_id_var = cursor.var(oracledb.DB_TYPE_RAW)
+        cursor.execute("""
+            INSERT INTO sessions (user_id, expires_at)
+            VALUES (HEXTORAW(:1), :2)
+            RETURNING session_id INTO :3          
+        """, (user_id_hex, expire, session_id_var))
+        conn.commit()
+        otp_type_label = "totp"
+
+    session_id_hex = session_id_var.getvalue()[0].hex()
+    token = generate_login_session_token(session_id_hex, user_id_hex, email, otp_type_label, expire)
+    
+    response = make_response(jsonify({
+        "message": "Thông tin đăng nhập hợp lệ. Chờ xác thực OTP", 
+        "otp_type": otp_type_label
+    }), 200)
+    
+    response.set_cookie(
+        'login_session_token',
+        token,
+        httponly=True,
+        secure=False,
+        samesite='Lax',
+        max_age=SESSION_EXPIRE * 60
+    )
+    
+    return response
+
+@main_bp.route('/login-completed', methods=['POST'])
+def login_completed():
+    conn = g.db_conn
+    login_session_token = request.cookies.get("login_session_token")
+    otp = request.get_json().get("otp")
+    if not login_session_token:
+        return make_response(jsonify({'message': 'Thiếu thông tin'}), 401)
+    if not otp:
+        return make_response(jsonify({'message': 'Thiếu otp'}), 400)
+    
+    payload = decode_login_session_token(login_session_token)
+    user_id = payload.get("user_id")
+    session_id =payload.get("session_id")
+    email = payload.get("email")
+    
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT otp_hash, attempts FROM sessions
+        WHERE session_id = HEXTORAW(:session_id)
+    """, {"session_id": session_id})
+    row = cursor.fetchone()
+    
+    if not row:
+        return make_response(jsonify({"message": "Không tìm thấy phiên đăng nhập"}), 404)
+    
+    hash_otp_stored, attempts = row
+        
+    if hash_otp_stored is None:
+        is_valid = verify_totp(conn, user_id, otp)
+        if not is_valid:
+            new_attempt = limit_attempt(conn, session_id, attempts, MAX_ATTEMPTS)
+            response = make_response(jsonify({"message": "Mã OTP không chính xác", "remain_attempts": new_attempt}), 400)
+            if not bool(new_attempt):
+                response = make_response(jsonify({"message": "Bạn đã vượt ngưỡng xác minh cho phép. Vui lòng tiên hành đăng nhập lại"}), 400)
+                response.delete_cookie('login_session_token')
+            return response
+    else:
+        if hash_otp(otp) != hash_otp_stored:
+            new_attempt = limit_attempt(conn, session_id, attempts, MAX_ATTEMPTS)
+            response = make_response(jsonify({"message": "Mã OTP không chính xác", "remain_attempts": new_attempt}), 400)
+            if not bool(new_attempt):
+                response = make_response(jsonify({"message": "Bạn đã vượt ngưỡng xác minh cho phép. Vui lòng tiên hành đăng nhập lại"}), 400)
+                response.delete_cookie('login_session_token')
+            return response
+    
+    
     # Tạo token
-    access_token = generate_access_token(uid).get('token')
-    refresh_token, expire = generate_refresh_token(uid).values()
+    access_token = generate_access_token(user_id).get('token')
+    refresh_token, expire = generate_refresh_token(user_id).values()
     refresh_token_hash = get_hash(refresh_token)
     
+    cursor.execute("""DELETE FROM sessions WHERE session_id = HEXTORAW(:session_id)""", {"session_id": session_id})
     cursor.execute("""
         INSERT INTO refresh_tokens(user_id, token_hash, expires_at)
-        VALUES(:1, :2, :3)        
-    """, (uid, refresh_token_hash, expire))
+        VALUES(HEXTORAW(:1), :2, :3)        
+    """, (user_id, refresh_token_hash, expire))
     conn.commit()
 
     response = make_response(jsonify({
         'access_token': access_token,
-        'user': {'user_id': uid, 'email': email}
+        'user': {'user_id': user_id, 'email': email}
     }), 200)
     
+    response.delete_cookie('login_session_token')
     response.set_cookie(
         'refresh_token',
         refresh_token,
@@ -356,6 +507,50 @@ def logout_force():
     response.delete_cookie('refresh_token')
     return response
     
+# ============ Duy trì trạng thái bên client =============
+@main_bp.route('/register-state', methods=['GET'])
+def register_state():
+    conn = g.db_conn
+    reg_session = request.cookies.get("reg_session")
+    if reg_session:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 1 FROM sessions
+            WHERE registration_session_token = :reg_session                      
+        """, {"reg_session": reg_session})
+        row = cursor.fetchone()
+        if row:
+            return make_response(jsonify({"message": "Hãy hoàn thành nốt bước xác thực"}), 202)
+        else:
+            response = make_response(jsonify({"message":"Phiên đăng ký đã bị hủy"}), 200)
+            response.delete_cookie("reg_session")
+            return response
     
+    return make_response(jsonify({"message": "Chưa tồn tại phiên đăng kí nào"}), 200)
+
+@main_bp.route('/login-state', methods=['GET'])
+def login_state():
+    conn = g.db_conn
+    login_session_token = request.cookies.get("login_session_token")
+    if login_session_token:
+        payload = decode_login_session_token(login_session_token)
+        session_id =payload.get("session_id")
+        email = payload.get("email")
+        type_otp = payload.get("type_otp")
+        
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 1 FROM sessions
+            WHERE session_id = HEXTORAW(:session_id)                      
+        """, {"session_id": session_id})
+        row = cursor.fetchone()
+        if row:
+            return make_response(jsonify({"message": "Hãy nhập mã OTP và hoàn thành phiên đăng nhập", "email": email, "otp_type": type_otp}), 202)
+        else:
+            response = make_response(jsonify({"message":"Phiên đăng nhập đã bị hủy"}), 200)
+            response.delete_cookie("login_session_token")
+            return response
+    
+    return make_response(jsonify({"message": "Chưa tồn tại phiên đăng nhập nào"}), 200)
         
         

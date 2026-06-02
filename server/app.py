@@ -16,7 +16,7 @@ def create_app():
     app.config['MAIL_USE_TLS'] = True
     app.config['MAIL_USERNAME'] = os.getenv("MAIL")
     app.config['MAIL_PASSWORD'] = os.getenv("APP_PWD")
-    app.config['MAIL_DEFAULT_SENDER'] = ('App Notification', os.getenv("MAIL"))
+    app.config['MAIL_DEFAULT_SENDER'] = ('OTP PLATFORM', os.getenv("MAIL"))
     
     mail.init_app(app)
     app.secret_key = 'your-secret-key'  # cần cho session, flash...

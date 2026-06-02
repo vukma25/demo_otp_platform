@@ -92,7 +92,7 @@ const api = async (endpoint, options = {}) => {
                     ...originalRequest.options,
                     headers: retryHeaders,
                 };
-                response = await fetch(originalRequest.endpoint, retryOptions);
+                response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/${originalRequest.endpoint}`, retryOptions);
                 return response;
             } catch (err) {
                 processQueue(err, null);
@@ -113,7 +113,7 @@ const api = async (endpoint, options = {}) => {
                             ...originalRequest.options,
                             headers: retryHeaders,
                         };
-                        fetch(originalRequest.endpoint, retryOptions).then(resolve).catch(reject);
+                        fetch(`${import.meta.env.VITE_SERVER_NAME}/${originalRequest.endpoint}`, retryOptions).then(resolve).catch(reject);
                     },
                     reject,
                 });

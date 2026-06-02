@@ -1,6 +1,8 @@
 from services.use_redis import get_redis
 from helper.session import hash_otp
 from datetime import datetime, timezone
+import pyotp
+from .totp_secret_key import decrypt_secret
 
 MAX_ATTEMPTS = 5
 
@@ -38,43 +40,44 @@ def verify_email_on_oracle(conn, session_token: str, user_otp: str) -> dict:
     cursor = conn.cursor()
     # Lấy thông tin bản ghi OTP
     cursor.execute("""
-        SELECT email, otp_hash, attempts, expires_at
-        FROM registration
-        WHERE session_token = :token
+        SELECT r.email, s.otp_hash, s.attempts, s.expires_at
+        FROM registration r, sessions s
+        WHERE r.session_token = s.registration_session_token AND r.session_token = :token
     """, {'token': session_token})
     row = cursor.fetchone()
     
     if not row:
         return {"success": False, "error": "Mã xác minh không tồn tại."}
     
-    email, otp_hash_stored, attempts, expires_at = row
+    print(row)
+    email, otp_hash, attempts = row[0], row[1], row[2]
     
-    if datetime.now(timezone.utc).replace(tzinfo=None) > expires_at:
-        # Xóa bản ghi hết hạn
-        cursor.execute("DELETE FROM registration WHERE session_token = :token", {'token': session_token})
-        conn.commit()
-        return {"success": False, "error": "Mã đã hết hạn."}
-    
+    if otp_hash is None:
+        return {"success": False, "error": "Vui lòng yêu cầu mã mới."}
     # Kiểm tra số lần thử
     if attempts >= MAX_ATTEMPTS:
-        cursor.execute("DELETE FROM registration WHERE session_token = :token", {'token': session_token})
+        cursor.execute("""
+            UPDATE sessions
+            SET otp_hash = NULL
+            WHERE registration_session_token = :token""", 
+        {'token': session_token})
         conn.commit()
         return {"success": False, "error": "Bạn đã thử quá nhiều lần. Vui lòng yêu cầu mã mới."}
     
     # So sánh hash
-    if hash_otp(user_otp) != otp_hash_stored:
+    if hash_otp(user_otp) != otp_hash:
         # Tăng attempts
         new_attempt = cursor.var(int)
         cursor.execute("""
-            UPDATE registration
+            UPDATE sessions
             SET attempts = attempts + 1
-            WHERE session_token = :token
+            WHERE registration_session_token = :token
             RETURNING attempts INTO :new_att
         """, {'token': session_token, 'new_att': new_attempt})
         conn.commit()
         
         attempts_value = new_attempt.getvalue()[0]
-        return {"success": False, "error": "Mã OTP không đúng.", "attempt": attempts_value}
+        return {"success": False, "error": "Mã OTP không đúng.", "remain_attempt": MAX_ATTEMPTS - attempts_value}
     
     # Thành công: xóa bản ghi OTP
     pw_hash = cursor.var(str)
@@ -84,3 +87,27 @@ def verify_email_on_oracle(conn, session_token: str, user_otp: str) -> dict:
     """, {'token': session_token, "pw_hash": pw_hash})
     conn.commit()
     return {"success": True, "email": email, "password_hash": pw_hash.getvalue()[0]}
+
+def verify_totp(conn, user_id_hex: str, totp_code: str):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT totp_secret_encrypted FROM users 
+            WHERE user_id = HEXTORAW(:user_id)
+        """, {"user_id": user_id_hex})
+        
+        row = cursor.fetchone()
+        if not row:
+            return None
+            
+        encrypted_secret = row[0]
+
+        # try:
+        # 1. Giải mã chuỗi AES để lấy Secret Key Base32 gốc của TOTP
+        raw_secret = decrypt_secret(encrypted_secret)
+        # 2. Khởi tạo thực thể TOTP với key gốc
+        totp = pyotp.TOTP(raw_secret)
+        # 3. Xác thực mã 6 số với tham số valid_window=1 (cho phép sai số +-30 giây)
+        return totp.verify(totp_code, valid_window=1)
+    except Exception:
+        raise

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useSelector, useDispatch } from "react-redux"
 import { useNavigate } from "react-router";
 import Field from "../Components/Field";
-import { setSuccess, login } from "../redux/features/auth";
+import { setSuccess, loginCompleted } from "../redux/features/auth";
 import "../styles/Login.css"
 
 export default function Login() {
@@ -10,7 +10,9 @@ export default function Login() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  const [loginData, setLoginData] = useState({ "email": "tuanvu.actvn.edu@gmail.com", "password": "12345", "otp": "123456" })
+  const [loginData, setLoginData] = useState({ "email": "", "password": "" })
+  const [responseData, setResponseData] = useState(null)
+  const [otp, setOtp] = useState("")
 
   const handleChangeEmail = (e) => {
     setLoginData(prev => ({ ...prev, email: e.target.value }))
@@ -19,16 +21,55 @@ export default function Login() {
     setLoginData(prev => ({ ...prev, password: e.target.value }))
   }
   const handleChangeOTP = (e) => {
-    setLoginData(prev => ({ ...prev, otp: e.target.value }))
+    setOtp(e.target.value)
   }
 
-  const handleLogin = () => {
-    dispatch(login(loginData))
+  const handleLogin = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/login`, {
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": JSON.stringify(loginData),
+        "credentials": "include"
+      })
+
+      if (response.status === 200) {
+        const data = await response.json()
+        setResponseData(data)
+      }
+    } catch (err) {
+      console.error(err)
+    }
   }
 
-  useEffect(() => {
-    if (success) { console.log(success, "OK"); navigate("/"); dispatch(setSuccess()) }
-  }, [success])
+  const handleCompleteLogin = () => {
+    dispatch(loginCompleted({ "otp": otp }))
+  }
+
+  // useEffect(() => {
+  //   if (success) { navigate("/"); dispatch(setSuccess()) }
+  // }, [success])
+
+  useLayoutEffect(() => {
+    async function remainState() {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/login-state`, {
+          "method": "GET",
+          "credentials": "include"
+        })
+
+        if (response.status === 202) {
+          const data = await response.json()
+          console.log(data)
+          setResponseData(data)
+          setLoginData(prev => ({ ...prev, "email": data.email }))
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    remainState()
+  }, [])
 
   return (
     <main className="login-frame" aria-label="OTP login">
@@ -61,16 +102,19 @@ export default function Login() {
           </header>
 
           <div className="fields">
-            <Field label={"Email"} value={loginData.email} func={handleChangeEmail} />
-            <Field label={"Password"} type={"password"} value={loginData.password} func={handleChangePassword} />
-            <Field label={"OTP"} value={loginData.otp} func={handleChangeOTP} />
+            <Field label={"Email"} value={loginData.email} func={handleChangeEmail} disabled={!!responseData} />
+            {!responseData && <Field label={"Password"} type={"password"} value={loginData.password} func={handleChangePassword} />}
+            {responseData && <Field label={"OTP"} value={loginData.otp} func={handleChangeOTP} />}
           </div>
 
           <div className="login-actions">
             <button
               className="button" disabled={authLoading}
-              onClick={handleLogin}>
-              Login
+              onClick={() => {
+                if (!responseData) { handleLogin() }
+                else { handleCompleteLogin() }
+              }}>
+              {!!responseData ? "Xác thực" : "Đăng nhập"}
             </button>
           </div>
 

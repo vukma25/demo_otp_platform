@@ -9,6 +9,16 @@ load_dotenv()
 ACCESS_TOKEN_EXPIRE_MINUTES=1
 REFRESH_TOKEN_EXPIRE_DAYS=3
 
+def generate_login_session_token(session_id, user_id, email, type_otp, expire):
+    payload = {
+        'user_id': user_id,
+        'session_id': session_id,
+        'email': email,
+        'type_otp': type_otp,
+        'exp': expire,
+        'type': 'login_session'
+    }
+    return jwt.encode(payload, os.getenv("SECRET_KEY"), os.getenv("ALGORITHM"))
 
 def generate_access_token(user_id):
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -50,5 +60,16 @@ def decode_refresh_token(refresh_token):
     except Exception:
         raise
     
+def decode_login_session_token(login_session_token):
+    try:
+        payload = jwt.decode(
+            login_session_token, 
+            os.getenv('SECRET_KEY'), 
+            os.getenv("ALGORITHM")
+        )
+        return payload
+    except Exception:
+        raise
+
 def hash_token(token):
     return hashlib.sha256(token.encode('utf-8')).hexdigest()

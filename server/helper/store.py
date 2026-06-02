@@ -36,17 +36,25 @@ def store_oracle(email: str, password_hash: str, otp: str) -> str:
         INSERT INTO registration (
             session_token,
             email,
-            otp_hash,
-            expires_at,
             password_hash
         )
-        VALUES (:1, :2, :3, :4, :5)
+        VALUES (:1, :2, :3)
     """, (
         session_token,
         email,
-        otp_hash,
-        expires_at,
         password_hash
+    ))
+    c.execute("""
+        INSERT INTO sessions (
+            registration_session_token,
+            otp_hash,
+            expires_at
+        ) 
+        VALUES (:1, :2, :3)         
+    """, (
+        session_token,
+        otp_hash,
+        expires_at
     ))
     conn.commit()
     

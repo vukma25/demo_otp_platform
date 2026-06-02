@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useNavigate } from "react-router"
 import Field from "../Components/Field";
 import "../styles/Register.css"
@@ -20,48 +20,6 @@ function StepCard({ number, title, meta, active }) {
         <div className="step-meta">{meta}</div>
       </div>
     </div>
-  );
-}
-
-function DetailCard({
-  index,
-  title,
-  caption,
-  status,
-  rows,
-  active,
-  measure,
-}) {
-  return (
-    <section className={`detail-card${active ? " detail-card-active" : ""}`}>
-      <div className="detail-head">
-        <div className={`detail-index${active ? " detail-index-active" : ""}`}>
-          {index}
-        </div>
-        <div className="detail-title-wrap">
-          <h3>{title}</h3>
-          <p>{caption}</p>
-        </div>
-        <span className={`status-pill${active ? " status-pill-active" : ""}`}>
-          {status}
-        </span>
-      </div>
-
-      <div className="data-rows">
-        {rows.map(([key, value]) => (
-          <div className="data-row" key={key}>
-            <span>{key}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-
-      <div className="measure">
-        <span style={{ width: measure[0] }} />
-        <span style={{ width: measure[1] }} />
-        <span />
-      </div>
-    </section>
   );
 }
 
@@ -116,7 +74,7 @@ export default function Register() {
   const verifyEmail = async () => {
     if (!checkValidateOtp(otp)) return
     try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/verify-otp`, {
+      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/verify-email`, {
         "method": "POST",
         "headers": { "Content-Type": "application/json" },
         "body": JSON.stringify({ "otp": otp }),
@@ -131,6 +89,22 @@ export default function Register() {
       }
     } catch (err) {
       setNotice(`Có lỗi xảy ra ${err}`)
+    }
+  }
+
+  const resendVerifyEmail = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/resend-verify-email`, {
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": JSON.stringify({}),
+        "credentials": "include"
+      })
+
+      const data = await response.json()
+      console.log(data)
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -162,6 +136,26 @@ export default function Register() {
 
     return () => { if (timer) clearTimeout(timer) }
   }, [notice])
+
+  useLayoutEffect(() => {
+    async function remainState() {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/register-state`, {
+          "method": "GET",
+          "credentials": "include"
+        })
+
+        if (response.status === 202) {
+          const data = await response.json()
+          console.log(data)
+          setStep(1)
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    remainState()
+  }, [])
 
   return (
     <main className="register-frame" aria-label="Secure account onboarding">
@@ -226,12 +220,14 @@ export default function Register() {
       {step === 1 && <section className="content-grid">
         <input type="text" onChange={handleTypeOtp} />
         <button onClick={verifyEmail}>Xác thực email</button>
+        <button onClick={resendVerifyEmail}>Gửi lại OTP</button>
       </section>}
       {step === 2 && <section className="content-grid">
         <img src={verifyData?.qr_code} alt="Mã quét 2FA" />
 
         <input type="text" id="totp_code" placeholder="Nhập mã 6 số" onChange={handleTypeOtp} />
         <button onClick={activate2FA}>Kích hoạt 2FA</button>
+        <button onClick={() => { navigate("/login") }}>Đăng nhập ngay</button>
       </section>}
     </main>
   );

@@ -9,16 +9,19 @@ const initialState = {
     "authLoading": false
 }
 
-export const login = createAsyncThunk(
-    'auth/login',
+export const loginCompleted = createAsyncThunk(
+    'auth/login-completed',
     async (data, { rejectWithValue }) => {
         try {
-            const response = await api("/login", {
+            const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/login-completed`, {
                 "method": "POST",
-                "body": JSON.stringify(data)
+                "headers": { "Content-Type": "application/json" },
+                "body": JSON.stringify(data),
+                "credentials": "include"
             })
 
-            return response
+            const result = await response.json()
+            return result
         } catch (error) {
             return rejectWithValue(error);
         }
@@ -42,9 +45,11 @@ export const logoutForce = createAsyncThunk(
     'auth/logout-force',
     async (data, { rejectWithValue }) => {
         try {
-            const response = await api("/logout-force", {
+            const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/logout-force`, {
                 "method": "POST",
-                "body": JSON.stringify(data)
+                "headers": { "Content-Type": "application/json" },
+                "body": JSON.stringify(data),
+                "credentials": "include"
             })
         } catch (error) {
             return rejectWithValue(error);
@@ -66,17 +71,17 @@ const authSlice = createSlice({
     },
     extraReducers: (builder) =>
         builder
-            .addCase(login.pending, (state) => {
+            .addCase(loginCompleted.pending, (state) => {
                 state.error = null
                 state.authLoading = true
             })
-            .addCase(login.fulfilled, (state, action) => {
+            .addCase(loginCompleted.fulfilled, (state, action) => {
                 state.authLoading = false
                 state.success = true
                 state.user = action.payload.user
                 state.accessToken = action.payload.access_token
             })
-            .addCase(login.rejected, (state, action) => {
+            .addCase(loginCompleted.rejected, (state, action) => {
                 state.authLoading = false
                 state.error = action.payload
             })
