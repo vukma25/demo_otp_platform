@@ -10,15 +10,20 @@ pool = None
 
 def init_db_pool():
     global pool
-    pool = oracledb.create_pool(
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        dsn=os.getenv("DB_DSN"),
-        min=2,
-        max=10,
-        increment=1
-    )
-    print("Oracle pool đã được tạo.")
+    try:
+        pool = oracledb.create_pool(
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            dsn=os.getenv("DB_DSN"),
+            min=2,
+            max=10,
+            increment=1
+        )
+        print("Oracle pool đã được tạo.")
+    except Exception as e:
+        pool = None
+        print(f"Không thể tạo Oracle pool: {e}")
+        raise
 
 def close_db_pool():
     global pool
@@ -28,6 +33,8 @@ def close_db_pool():
 
 def get_connection():
     """Lấy một connection từ pool, gán vào Flask g."""
+    if pool is None:
+        raise RuntimeError("Oracle connection pool chưa được khởi tạo")
     if 'db_conn' not in g:
         g.db_conn = pool.acquire()
     return g.db_conn

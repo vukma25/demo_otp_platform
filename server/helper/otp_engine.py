@@ -53,7 +53,6 @@ class OTPEngine:
         
         return otp_str
         
-    
     def _generate_hotp(self, counter, digits=6):
         # Bước 1: Chuyển counter thành bytes (8-byte big-endian)
         counter_bytes = struct.pack('>Q', counter)
@@ -106,7 +105,21 @@ class OTPEngine:
         if not hotp.verify(otp_input, self.counter):
             if not self.look_ahead(otp=otp_input):
                 return { "status": False, "des": "Độ lệch bộ đếm vượt ngưỡng cho xem"}
+            
+        self.counter += 1
         return { "status": True, "des": "Xác thực thành công"}
+
+    def get_counter(self):
+        return self.counter
+
+    def set_counter(self, value):
+        try:
+            self.counter = int(value)
+        except Exception:
+            pass
+
+    def increment_counter(self):
+        self.counter += 1
     
     def resync_hotp_counter(self, otps):
         start_counter = self.counter
@@ -120,7 +133,7 @@ class OTPEngine:
                 match_index = i
                 break
                 
-        if match_index != -1:
+        if match_index != -1 and match_index > self.counter:
             self.counter = start_counter + match_index + 3
             
             return {

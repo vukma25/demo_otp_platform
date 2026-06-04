@@ -98,16 +98,13 @@ def verify_totp(conn, user_id_hex: str, totp_code: str):
         
         row = cursor.fetchone()
         if not row:
-            return None
+            return False
             
         encrypted_secret = row[0]
 
-        # try:
-        # 1. Giải mã chuỗi AES để lấy Secret Key Base32 gốc của TOTP
         raw_secret = decrypt_secret(encrypted_secret)
-        # 2. Khởi tạo thực thể TOTP với key gốc
         totp = pyotp.TOTP(raw_secret)
-        # 3. Xác thực mã 6 số với tham số valid_window=1 (cho phép sai số +-30 giây)
         return totp.verify(totp_code, valid_window=1)
-    except Exception:
-        raise
+    except Exception as e:
+        print(f"verify_totp error: {e}")
+        return False
