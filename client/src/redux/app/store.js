@@ -13,6 +13,10 @@ import storage from 'redux-persist/es/storage'
 
 //reducers
 import authReducer from "../features/auth"
+import regReducer from "../features/register"
+import loginReducer from "../features/login"
+import profileReducer from "../features/profile"
+import socketReducer from "../features/socket"
 
 const persistConfig = {
     key: 'root',
@@ -22,7 +26,11 @@ const persistConfig = {
 }
 
 const rootReducer = combineSlices({
-    "auth": authReducer
+    "auth": authReducer,
+    "reg": regReducer,
+    "login": loginReducer,
+    "profile": profileReducer,
+    "socket": socketReducer
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)

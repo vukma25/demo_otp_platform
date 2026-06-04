@@ -1,11 +1,12 @@
 .register-frame {
     box-sizing: border-box;
     width: 100vw;
-    height: 100vh;
+    min-height: 100vh;
     background: #ffffff;
     color: #1a1a1a;
-    padding: 24px;
+    padding: 28px;
     font-family: Inter, Arial, sans-serif;
+    overflow-x: hidden;
 }
 
 .register-frame *,
@@ -16,14 +17,19 @@
 
 .top-nav,
 .brand,
-.step-card,
-.field-box,
+.stage-card,
 .form-actions,
 .detail-head,
 .data-row,
 .measure,
 .telemetry {
     display: flex;
+    align-items: center;
+}
+
+.top-actions {
+    display: flex;
+    gap: 10px;
     align-items: center;
 }
 
@@ -99,7 +105,7 @@
     margin-bottom: 16px;
 }
 
-.step-card {
+.stage-card {
     gap: 10px;
     min-width: 0;
     height: 64px;
@@ -108,13 +114,13 @@
     border: 1px solid #eef0f2;
 }
 
-.step-card-active {
+.stage-card-active {
     background: #1a1a1a;
     border-color: #1a1a1a;
     color: #ffffff;
 }
 
-.step-number {
+.stage-number {
     display: grid;
     place-items: center;
     flex: 0 0 28px;
@@ -124,38 +130,45 @@
     font: 700 13px/1 "IBM Plex Mono", "Courier New", monospace;
 }
 
-.step-number-active {
+.stage-number-active {
     color: #ffffff;
     background: #4a9fd8;
     border-color: #4a9fd8;
 }
 
-.step-copy {
+.stage-copy {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: 3px;
 }
 
-.step-title {
+.stage-title {
     font: 700 13px/1 "IBM Plex Mono", "Courier New", monospace;
     white-space: nowrap;
 }
 
-.step-meta {
+.stage-meta {
     color: #888888;
     font: 400 9px/1 "Geist Mono", "Courier New", monospace;
 }
 
-.step-card-active .step-meta {
+.stage-card-active .step-meta {
     color: #ffffff;
 }
 
-.content-grid {
+/* .content-grid {
     display: grid;
-    grid-template-columns: minmax(0, 460px) 278px;
+    grid-template-columns: 1fr;
     gap: 14px;
     align-items: stretch;
+    width: 100%;
+} */
+
+.register-panel,
+.side-panel {
+    min-width: 400px;
+    max-width: 70%;
 }
 
 .register-panel,
@@ -167,7 +180,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    min-height: 335px;
+    height: auto;
     padding: 14px;
     background: #f7f8fa;
 }
@@ -210,34 +223,53 @@
     gap: 9px;
 }
 
-.field {
+.input-field {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
 }
 
-.field-label {
+.input-label {
     font: 700 12px/1 "IBM Plex Mono", "Courier New", monospace;
+    color: #1a1a1a;
 }
 
-.field-box {
-    justify-content: space-between;
-    height: 38px;
-    padding: 8px 10px;
+.input-box {
+    width: 100%;
+}
+
+.input-control {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid #dfe3ea;
     background: #ffffff;
-    border: 1px solid #1a1a1a;
-    font-size: 14px;
-    line-height: 1;
+    color: #1a1a1a;
+    font: 400 14px/1.5 "Inter", Arial, sans-serif;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.password-value {
-    font: 400 15px/1 "IBM Plex Mono", "Courier New", monospace;
-    letter-spacing: 0;
+.input-control:focus {
+    border-color: #4a9fd8;
+    box-shadow: 0 0 0 4px rgba(74, 159, 216, 0.12);
 }
 
-.field-status {
+.input-control:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.qr-code {
+    width: 100%;
+    max-width: 360px;
+    border-radius: 18px;
+    border: 1px solid #dfe3ea;
+}
+
+.input-status {
     color: #4a9fd8;
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1;
 }
 
@@ -267,20 +299,46 @@
     gap: 10px;
 }
 
-.primary-action {
-    width: 174px;
-    height: 38px;
+.primary-action,
+.secondary-button,
+.back-button {
+    min-width: 150px;
+    height: 42px;
+    border-radius: 14px;
     border: 0;
-    background: #1a1a1a;
-    color: #ffffff;
+    padding: 0 18px;
     font: 700 13px/1 "IBM Plex Mono", "Courier New", monospace;
     cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.secondary-action {
-    color: #666666;
-    font-size: 11px;
-    line-height: 1;
+.primary-action {
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+.secondary-button {
+    background: #f7f8fa;
+    color: #1a1a1a;
+    border: 1px solid #dfe3ea;
+}
+
+.back-button {
+    background: transparent;
+    color: #1a1a1a;
+}
+
+.primary-action:hover,
+.secondary-button:hover,
+.back-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(26, 26, 26, 0.08);
+}
+
+.primary-action:active,
+.secondary-button:active,
+.back-button:active {
+    transform: translateY(0);
 }
 
 .side-panel {
@@ -473,8 +531,7 @@
         padding: 18px;
     }
 
-    .top-nav,
-    .content-grid {
+    .top-nav {
         grid-template-columns: 1fr;
     }
 
@@ -487,10 +544,6 @@
     .stepper {
         grid-template-columns: 1fr;
         height: auto;
-    }
-
-    .content-grid {
-        display: grid;
     }
 
     .register-panel,

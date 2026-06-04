@@ -1,13 +1,19 @@
 import { useState } from "react"
+import { useSelector } from "react-redux"
+import { checkValidateOtp } from "../utilities/validator"
 
 export default function Resync() {
+    const { socket } = useSelector((state) => state.socket)
+
     const [otps, setOtps] = useState({ "otp1": "", "otp2": "", "otp3": "" })
     const [loading, setLoading] = useState(false)
     const [resync, setResync] = useState({ "success": false, "message": "" })
 
-    const checkValidateOtp = (otp) => {
-        return /^\d+$/.test(otp);
-    }
+    const getSocketHeaders = () => {
+        const socketId = socket?.id;
+        return socketId ? { "X-Socket-ID": socketId } : {};
+    };
+
     const handleResync = async () => {
         if (Object.entries(otps).some(([_, otp]) => otp.length !== 6)) { console.log("Độ dài yêu cầu các mã OTP là 6 chữ số"); return; }
         if (Object.entries(otps).some(([_, otp]) => !checkValidateOtp(otp))) { console.log("Yêu cầu các mã OTP chỉ gồm chứ số"); return; }
@@ -18,6 +24,7 @@ export default function Resync() {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
+                    ...getSocketHeaders()
                 },
                 body: JSON.stringify({ "otps": Object.entries(otps).map(([_, value]) => value) }),
             });

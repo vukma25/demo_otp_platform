@@ -9,6 +9,7 @@ const initialState = {
     "authLoading": false
 }
 
+
 export const loginCompleted = createAsyncThunk(
     'auth/login-completed',
     async (data, { rejectWithValue }) => {
@@ -57,7 +58,6 @@ export const logoutForce = createAsyncThunk(
     }
 );
 
-
 const authSlice = createSlice({
     name: "auth",
     initialState,
@@ -72,14 +72,15 @@ const authSlice = createSlice({
     extraReducers: (builder) =>
         builder
             .addCase(loginCompleted.pending, (state) => {
-                state.error = null
                 state.authLoading = true
             })
             .addCase(loginCompleted.fulfilled, (state, action) => {
                 state.authLoading = false
-                state.success = true
-                state.user = action.payload.user
-                state.accessToken = action.payload.access_token
+                if (action.payload?.user) {
+                    state.user = action.payload.user
+                    state.accessToken = action.payload.access_token
+                    state.success = true
+                }
             })
             .addCase(loginCompleted.rejected, (state, action) => {
                 state.authLoading = false

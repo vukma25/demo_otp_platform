@@ -1,36 +1,43 @@
 import { useState, useEffect, useLayoutEffect } from "react";
 import { useNavigate } from "react-router"
+import { useSelector, useDispatch } from "react-redux"
+import { clear, submitFormData, verifyEmail, resendVerifyEmail, activate2FA, remainState } from "../redux/features/register";
+import { checkValidateOtp } from "../utilities/validator";
 import Field from "../Components/Field";
 import "../styles/Register.css"
 
 const steps = [
-  { number: 0, title: "Register", meta: "credentials" },
-  { number: 1, title: "Verify", meta: "otp code" },
-  { number: 2, title: "Notification", meta: "delivery ready" },
+  { number: 0, title: "Đăng ký", meta: "Thông tin" },
+  { number: 1, title: "Xác minh", meta: "Mã OTP" },
+  { number: 2, title: "Kích hoạt", meta: "Sẵn sàng" },
 ];
 
-function StepCard({ number, title, meta, active }) {
+function StageCard({ number, title, meta, active }) {
   return (
-    <div className={`step-card${active ? " step-card-active" : ""}`}>
-      <div className={`step-number${active ? " step-number-active" : ""}`}>
+    <div className={`stage-card${active ? " stage-card-active" : ""}`}>
+      <div className={`stage-number${active ? " stage-number-active" : ""}`}>
         {number}
       </div>
-      <div className="step-copy">
-        <div className="step-title">{title}</div>
-        <div className="step-meta">{meta}</div>
+      <div className="stage-copy">
+        <div className="stage-title">{title}</div>
+        <div className="stage-meta">{meta}</div>
       </div>
     </div>
   );
 }
 
 export default function Register() {
+  const { data: { submit, verify, resend, active }, regLoading, error, success, step } = useSelector((state) => state.reg)
+  const dispatch = useDispatch()
   const navigate = useNavigate()
+
   const [formData, setFormData] = useState({ email: "", password: "" })
   const [confirmPw, setConfirmPw] = useState("")
   const [notice, setNotice] = useState("")
-  const [step, setStep] = useState(0)
   const [otp, setOtp] = useState("")
   const [verifyData, setVerifyData] = useState(null)
+  const [res, setRes] = useState(null)
+  const [timer, setTimer] = useState(null)
 
   const handleChangeEmail = (e) => {
     setFormData(prev => ({ ...prev, email: e.target.value }))
@@ -45,86 +52,36 @@ export default function Register() {
     setOtp(e.target.value)
   }
 
-  const submitFormData = async () => {
+  const handleSubmitFormData = () => {
     if (formData.email.length === 0) { setNotice("Email không được bỏ trống"); return }
     if (formData.password.length === 0) { setNotice("Mật khẩu không được để trống"); return }
     if (confirmPw.length === 0) { setNotice("Xác nhận lại mật khâu không được để trống"); return }
     if (confirmPw !== formData.password) { setNotice("Xác nhận lại mật khảu không khớp"); return }
+    const form = new FormData()
+    form.append("email", formData.email)
+    form.append("password", formData.password)
 
-    try {
-      const form = new FormData()
-      form.append("email", formData.email)
-      form.append("password", formData.password)
-
-      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/register`, {
-        "method": "POST",
-        "body": form,
-        "credentials": "include"
-      })
-      const data = await response.json()
-      setStep(1)
-    } catch (err) {
-      setNotice(`Có lỗi xảy ra ${err}`)
-    }
+    dispatch(submitFormData(form))
   }
 
-  const checkValidateOtp = (otpVerifier) => {
-    return /^\d+$/.test(otpVerifier) && otpVerifier.length === 6;
-  }
-  const verifyEmail = async () => {
+  const handleVerifyEmail = () => {
     if (!checkValidateOtp(otp)) return
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/verify-email`, {
-        "method": "POST",
-        "headers": { "Content-Type": "application/json" },
-        "body": JSON.stringify({ "otp": otp }),
-        "credentials": "include"
-      })
-      if (response.status === 200) {
-        const data = await response.json()
-        console.log(data)
-        setVerifyData(data)
-        setOtp("")
-        setStep(2)
-      }
-    } catch (err) {
-      setNotice(`Có lỗi xảy ra ${err}`)
-    }
+    dispatch(verifyEmail({ "otp": otp }))
+    setOtp("")
   }
 
-  const resendVerifyEmail = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/resend-verify-email`, {
-        "method": "POST",
-        "headers": { "Content-Type": "application/json" },
-        "body": JSON.stringify({}),
-        "credentials": "include"
-      })
-
-      const data = await response.json()
-      console.log(data)
-    } catch (err) {
-      console.error(err)
-    }
+  const handleResendVerifyEmail = () => {
+    dispatch(resendVerifyEmail())
   }
 
-  const activate2FA = async () => {
+  const handleActivate2FA = () => {
     if (!checkValidateOtp(otp)) return
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/enable-totp`, {
-        "method": "POST",
-        "headers": { "Content-Type": "application/json" },
-        "body": JSON.stringify({ "id": verifyData.user_id, "otp": otp }),
-      })
-      if (response.status === 200) {
-        const data = await response.json()
-        console.log(data)
-        navigate("/login")
-      }
-    } catch (err) {
-      setNotice(`Có lỗi xảy ra ${err}`)
-    }
+    dispatch(activate2FA({ "id": verify.user_id, "otp": otp }))
   }
+
+  useEffect(() => {
+    if (error) { setNotice(error?.message) }
+  }, [error])
 
   useEffect(() => {
     let timer = null
@@ -138,24 +95,29 @@ export default function Register() {
   }, [notice])
 
   useLayoutEffect(() => {
-    async function remainState() {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_SERVER_NAME}/register-state`, {
-          "method": "GET",
-          "credentials": "include"
-        })
-
-        if (response.status === 202) {
-          const data = await response.json()
-          console.log(data)
-          setStep(1)
-        }
-      } catch (err) {
-        console.error(err)
-      }
-    }
-    remainState()
+    dispatch(remainState())
   }, [])
+
+  useEffect(() => {
+    if (submit?.resend_after > 0) {
+      setTimer(submit.resend_after)
+    }
+    if (resend?.resend_after > 0) {
+      setTimer(resend?.resend_after)
+    }
+  }, [submit, resend])
+
+  useEffect(() => {
+    if (timer <= 0) return
+
+    const interval = setInterval(() => {
+      setTimer(prev => prev - 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [timer])
+
+  useEffect(() => { if (success) { navigate("/login"); dispatch(clear()) } }, [success])
 
   return (
     <main className="register-frame" aria-label="Secure account onboarding">
@@ -164,21 +126,24 @@ export default function Register() {
           <span className="brand-mark" aria-hidden="true" />
           <span>OTP LAB</span>
         </div>
-        <div className="nav-meta">Register&nbsp;&nbsp; Verify&nbsp;&nbsp; Notify</div>
+        <div className="top-actions">
+          <button className="secondary-button" type="button" onClick={() => navigate("/")}>Trang chủ</button>
+          <button className="button" type="button" onClick={() => navigate("/login")}>Đăng nhập</button>
+        </div>
       </nav>
 
       <section className="hero-copy">
-        <div className="eyebrow">Secure account onboarding</div>
-        <h1>Create account with staged OTP protection</h1>
+        <div className="eyebrow">Đăng ký tài khoản an toàn</div>
+        <h1>Tạo tài khoản với bảo mật OTP</h1>
         <p>
-          A three-step register flow collects username and password, verifies
-          the OTP channel, then confirms notification readiness.
+          Quy trình đăng ký gồm ba bước: tạo thông tin tài khoản, xác minh mã OTP,
+          và hoàn tất kích hoạt bảo mật.
         </p>
       </section>
 
       <section className="stepper" aria-label="Registration progress">
         {steps.map((st) => (
-          <StepCard
+          <StageCard
             key={st.number}
             active={st.number === step}
             {...st} number={st.number + 1} />
@@ -186,20 +151,19 @@ export default function Register() {
       </section>
 
       {step === 0 && <section className="content-grid">
-        <section className="register-panel" aria-label="Register credentials">
+        <section className="register-panel" aria-label="Đăng ký tài khoản">
           <header className="form-header">
-            <div className="form-kicker">STEP 01 / REGISTER</div>
-            <h2>Start with account credentials</h2>
+            <div className="form-kicker">Đăng ký</div>
+            <h2>Bắt đầu với thông tin tài khoản</h2>
             <p>
-              After creating credentials, the next step will bind a one-time
-              password channel before notification delivery is enabled.
+              Sau khi tạo thông tin, bước tiếp theo sẽ kích hoạt kênh OTP để hoàn tất đăng ký.
             </p>
           </header>
 
           <div className="credential-fields">
-            <Field label="Username" value={formData.email} func={handleChangeEmail} />
-            <Field type={"password"} label="Password" value={formData.password} func={handleChangePassword} />
-            <Field type={"password"} label="Confirm password" value={confirmPw} func={handleConfirmPassword} />
+            <Field label="Email" value={formData.email} func={handleChangeEmail} />
+            <Field type={"password"} label="Mật khẩu" value={formData.password} func={handleChangePassword} />
+            <Field type={"password"} label="Xác nhận mật khẩu" value={confirmPw} func={handleConfirmPassword} />
           </div>
 
           {!!notice.length && <aside className="rules">
@@ -210,24 +174,58 @@ export default function Register() {
           <div className="form-actions">
             <button
               className="primary-action" type="button"
-              onClick={submitFormData}>
-              Create account
+              onClick={handleSubmitFormData}>
+              Tạo tài khoản
             </button>
-            <span className="secondary-action">Next: verify OTP</span>
           </div>
         </section>
       </section>}
       {step === 1 && <section className="content-grid">
-        <input type="text" onChange={handleTypeOtp} />
-        <button onClick={verifyEmail}>Xác thực email</button>
-        <button onClick={resendVerifyEmail}>Gửi lại OTP</button>
+        <section className="register-panel" aria-label="Xác minh email">
+          <header className="form-header">
+            <div className="form-kicker">Xác minh</div>
+            <h2>Xác thực kênh email</h2>
+            <p>Nhập mã một lần được gửi đến email của bạn.</p>
+          </header>
+
+          <div className="credential-fields">
+            <Field label="Mã xác minh" value={otp} func={handleTypeOtp} />
+          </div>
+
+          <div className="form-actions">
+            <button className="primary-action" type="button" onClick={handleVerifyEmail}>
+              Xác minh email
+            </button>
+            <button className="secondary-button" type="button" onClick={handleResendVerifyEmail} disabled={timer > 0 || regLoading}>
+              Gửi lại mã {timer ? `sau ${timer}s` : ""}
+            </button>
+          </div>
+        </section>
       </section>}
       {step === 2 && <section className="content-grid">
-        <img src={verifyData?.qr_code} alt="Mã quét 2FA" />
+        <section className="register-panel" aria-label="Kích hoạt TOTP">
+          <header className="form-header">
+            <div className="form-kicker">Kích hoạt TOTP</div>
+            <h2>Bật xác thực hai yếu tố</h2>
+            <p>Quét mã QR bằng ứng dụng Authenticator và nhập mã 6 chữ số.</p>
+          </header>
 
-        <input type="text" id="totp_code" placeholder="Nhập mã 6 số" onChange={handleTypeOtp} />
-        <button onClick={activate2FA}>Kích hoạt 2FA</button>
-        <button onClick={() => { navigate("/login") }}>Đăng nhập ngay</button>
+          <div className="credential-fields">
+            {verify?.qr_code ? (
+              <img className="qr-code" src={verify.qr_code} alt="Mã QR TOTP" />
+            ) : (
+              <div className="rules">Mã QR đang tải hoặc chưa sẵn sàng.</div>
+            )}
+            <Field label="Mã TOTP" value={otp} func={handleTypeOtp} />
+          </div>
+
+          <div className="form-actions">
+            <button className="primary-action" type="button" onClick={handleActivate2FA}>
+              Kích hoạt TOTP
+            </button>
+            <button className="secondary-button" type="button" onClick={() => navigate("/login")}>Đến đăng nhập</button>
+          </div>
+        </section>
       </section>}
     </main>
   );

@@ -1,9 +1,18 @@
 import { useState, useEffect } from "react"
+import { useSelector } from "react-redux"
+import { checkValidateOtp } from "../utilities/validator"
 
 export default function Verifier({ type = "hotp" }) {
+    const { socket } = useSelector((state) => state.socket)
+
     const [otpVerifier, setOtpVerifier] = useState("")
     const [loading, setLoading] = useState(false)
     const [verify, setVerify] = useState({ "success": false, "message": "" })
+
+    const getSocketHeaders = () => {
+        const socketId = socket?.id;
+        return socketId ? { "X-Socket-ID": socketId } : {};
+    };
 
     useEffect(() => { setOtpVerifier("") }, [type])
     useEffect(() => {
@@ -15,9 +24,6 @@ export default function Verifier({ type = "hotp" }) {
         return () => { if (timeOut) clearTimeout(timeOut); }
     }, [verify.message]);
 
-    const checkValidateOtp = (otpVerifier) => {
-        return /^\d+$/.test(otpVerifier);
-    }
     const handleVerifyOtp = async () => {
         if (otpVerifier.length !== 6) { console.log("Độ dài yêu cầu là 6 chữ số"); return; }
         if (!checkValidateOtp(otpVerifier)) { console.log("Yêu cầu mã OTP chỉ gồm chứ số"); return; }
@@ -28,6 +34,7 @@ export default function Verifier({ type = "hotp" }) {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
+                    ...getSocketHeaders()
                 },
                 body: JSON.stringify({ "otp": otpVerifier }),
             });
